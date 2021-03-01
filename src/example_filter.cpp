@@ -4,6 +4,8 @@
 
 #include <vulkan/vulkan.hpp>
 
+#include <chrono>
+
 #define ARR_VIEW(x) uint32_t(x.size()), x.data()
 #define ST_VIEW(s)  uint32_t(sizeof(s)), &s
 
@@ -94,11 +96,14 @@ auto ExampleFilter::run() const-> void {
 	// submit the command buffer to the queue and set up a fence.
 	auto queue = device.getQueue(compute_queue_familly_id, 0); // 0 is the queue index in the family, by default just the first one is used
 	auto fence = device.createFence(vk::FenceCreateInfo()); // fence makes sure the control is not returned to CPU till command buffer is depleted
+    std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 	queue.submit({submitInfo}, fence);
 	device.waitForFences({fence}, true, uint64_t(-1));      // wait for the fence indefinitely
+    std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
+    std::cout << "Dispatch time: " << time_span.count() * 1000.0 << " milliseconds." << std::endl;
 	device.destroyFence(fence);
 }
-
 /// run (sync) the filter
 auto ExampleFilter::operator()(vk::Buffer& out, const vk::Buffer& in
                                , const ExampleFilter::PushParams& p
