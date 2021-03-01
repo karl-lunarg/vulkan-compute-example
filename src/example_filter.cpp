@@ -21,7 +21,7 @@ namespace {
 
 /// Constructor
 ExampleFilter::ExampleFilter(const std::string& shaderPath){
-	auto layers = enableValidation ? enabledLayers({"VK_LAYER_LUNARG_standard_validation"})
+	auto layers = enableValidation ? enabledLayers({"VK_LAYER_KHRONOS_validation"})
 											 : std::vector<const char*>{};
 	auto extensions = enableValidation ? enabledExtensions({VK_EXT_DEBUG_REPORT_EXTENSION_NAME})
 												  : std::vector<const char*>{};
@@ -173,7 +173,7 @@ auto ExampleFilter::createComputePipeline(const vk::Device& device, const vk::Sh
 	                                                 , shader, "main", &specInfo);
 	auto pipelineCI = vk::ComputePipelineCreateInfo(vk::PipelineCreateFlags()
 	                                                , stageCI, pipeLayout);
-	return device.createComputePipeline(cache, pipelineCI, nullptr);
+	return device.createComputePipeline(cache, pipelineCI, nullptr).value;
 }
 
 /// Create descriptor set. Actually associate buffers to binding points in bindLayout.

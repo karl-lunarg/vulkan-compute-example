@@ -114,7 +114,7 @@ auto createDevice(const vk::PhysicalDevice& physicalDevice, const std::vector<co
 }
 
 /// Create buffer on a device. Does NOT allocate memory.
-auto createBuffer(const vk::Device& device, uint32_t bufSize
+auto createBuffer(const vk::Device& device, vk::DeviceSize bufSize
                   , vk::BufferUsageFlags usage
                   )-> vk::Buffer 
 {
@@ -184,7 +184,7 @@ auto allocMemory(const vk::PhysicalDevice& physDev, const vk::Device& device
 
 /// Copy device buffers using the transient command pool.
 /// Fully sync, no latency hiding whatsoever.
-auto copyBuf(const vk::Buffer& src, vk::Buffer& dst, const uint32_t size
+auto copyBuf(const vk::Buffer& src, vk::Buffer& dst, const vk::DeviceSize size
              , const vk::Device& device, const vk::PhysicalDevice& physDev)-> void
 {
 	const auto qf_id = getComputeQueueFamilyId(physDev); // queue family id, TODO: use transfer queue

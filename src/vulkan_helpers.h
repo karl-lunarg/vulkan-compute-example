@@ -7,6 +7,7 @@
 namespace vuh {
 
 inline auto div_up(uint32_t x, uint32_t y){ return (x + y - 1u)/y; }
+inline auto div_up(uint64_t x, uint64_t y){ return (x + y - 1u)/y; }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugReporter(
       VkDebugReportFlagsEXT, VkDebugReportObjectTypeEXT, uint64_t, size_t, int32_t
@@ -34,7 +35,7 @@ auto createDevice(const vk::PhysicalDevice& physicalDevice, const std::vector<co
                   , uint32_t queueFamilyID)-> vk::Device;
 
 auto createBuffer(const vk::Device& device
-                  , uint32_t bufSize
+                  , vk::DeviceSize bufSize
                   , vk::BufferUsageFlags usage=vk::BufferUsageFlagBits::eStorageBuffer
                   )-> vk::Buffer;
 
@@ -49,7 +50,7 @@ auto allocMemory(const vk::PhysicalDevice& physDev, const vk::Device& device
                  , uint32_t memory_id
                  )-> vk::DeviceMemory;
 
-auto copyBuf(const vk::Buffer& src, vk::Buffer& dst, const uint32_t size
+auto copyBuf(const vk::Buffer& src, vk::Buffer& dst, const vk::DeviceSize size
              , const vk::Device& device, const vk::PhysicalDevice& physDev)-> void;
 
 } // namespace vuh

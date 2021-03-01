@@ -51,7 +51,7 @@ public:
 	
 	/// Constructor
 	explicit Array(const vk::Device& device, const vk::PhysicalDevice& physDevice
-	                         , uint32_t n_elements ///< number of elements of corresponding type
+	                         , vk::DeviceSize n_elements ///< number of elements of corresponding type
 	                         , vk::MemoryPropertyFlags properties=vk::MemoryPropertyFlagBits::eDeviceLocal
 	                         , vk::BufferUsageFlags usage=vk::BufferUsageFlagBits::eStorageBuffer
 	                         )
