@@ -46,7 +46,7 @@ auto loadShader(const vk::Device& device, const char* filename
 }
 
 /// filter list of desired extensions to include only those supported by current Vulkan instance
-auto enabledExtensions(const std::vector<const char*>& extensions)-> std::vector<const char*> {
+auto enabledInstanceExtensions(const std::vector<const char*>& extensions)-> std::vector<const char*> {
 	auto ret = std::vector<const char*>{};
 	auto instanceExtensions = vk::enumerateInstanceExtensionProperties();
 	for(auto e: extensions){
@@ -85,7 +85,7 @@ auto registerValidationReporter(const vk::Instance& instance, PFN_vkDebugReportC
 	auto ret = VkDebugReportCallbackEXT(nullptr);
 	auto createInfo = VkDebugReportCallbackCreateInfoEXT{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-	createInfo.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT
+	createInfo.flags = VK_DEBUG_REPORT_INFORMATION_BIT_EXT | VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT
 	      | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
 	createInfo.pfnCallback = reporter;
 	
@@ -102,13 +102,14 @@ auto registerValidationReporter(const vk::Instance& instance, PFN_vkDebugReportC
 
 /// create logical device to interact with the physical one
 auto createDevice(const vk::PhysicalDevice& physicalDevice, const std::vector<const char*>& layers
+                  , const std::vector<const char*>& extensions
                   , uint32_t queueFamilyID
                   )-> vk::Device
 {
 	// When creating the device specify what queues it has
 	auto p = float(1.0); // queue priority
 	auto queueCI = vk::DeviceQueueCreateInfo(vk::DeviceQueueCreateFlags(), queueFamilyID, 1, &p);
-	auto devCI = vk::DeviceCreateInfo(vk::DeviceCreateFlags(), 1, &queueCI, ARR_VIEW(layers));
+	auto devCI = vk::DeviceCreateInfo(vk::DeviceCreateFlags(), 1, &queueCI, ARR_VIEW(layers), ARR_VIEW(extensions));
 	
 	return physicalDevice.createDevice(devCI, nullptr);
 }

@@ -22,7 +22,7 @@ auto loadShader(const vk::Device& device, const char* filename
                 , vk::ShaderModuleCreateFlags flags = vk::ShaderModuleCreateFlags()
                 )-> vk::ShaderModule;
 
-auto enabledExtensions(const std::vector<const char*>& extensions)-> std::vector<const char*>;
+auto enabledInstanceExtensions(const std::vector<const char*>& extensions)-> std::vector<const char*>;
 
 auto enabledLayers(const std::vector<const char*>& layers)-> std::vector<const char*>;
 
@@ -32,6 +32,7 @@ auto registerValidationReporter(const vk::Instance& instance, PFN_vkDebugReportC
 auto getComputeQueueFamilyId(const vk::PhysicalDevice& physicalDevice)-> uint32_t;
 
 auto createDevice(const vk::PhysicalDevice& physicalDevice, const std::vector<const char*>& layers
+                  , const std::vector<const char*>& extensions
                   , uint32_t queueFamilyID)-> vk::Device;
 
 auto createBuffer(const vk::Device& device

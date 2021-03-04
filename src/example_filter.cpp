@@ -25,14 +25,15 @@ namespace {
 ExampleFilter::ExampleFilter(const std::string& shaderPath){
 	auto layers = enableValidation ? enabledLayers({"VK_LAYER_KHRONOS_validation"})
 											 : std::vector<const char*>{};
-	auto extensions = enableValidation ? enabledExtensions({VK_EXT_DEBUG_REPORT_EXTENSION_NAME})
+	auto instanceExtensions = enableValidation ? enabledInstanceExtensions({VK_EXT_DEBUG_REPORT_EXTENSION_NAME})
 												  : std::vector<const char*>{};
-	instance = createInstance(layers, extensions);
+	instance = createInstance(layers, instanceExtensions);
 	debugReportCallback = enableValidation ? registerValidationReporter(instance, debugReporter)
 														: nullptr;
 	physDevice = instance.enumeratePhysicalDevices()[0]; // just use the first device
 	compute_queue_familly_id = getComputeQueueFamilyId(physDevice);
-	device = createDevice(physDevice, layers, compute_queue_familly_id); // TODO: when physical device is a discrete gpu, transfer queue needs to be included
+	std::vector<const char*> deviceExtensions({VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME});
+	device = createDevice(physDevice, layers, deviceExtensions, compute_queue_familly_id); // TODO: when physical device is a discrete gpu, transfer queue needs to be included
 	shader = loadShader(device, shaderPath.c_str());
 
 	dscLayout = createDescriptorSetLayout(device);
@@ -120,9 +121,12 @@ auto ExampleFilter::createInstance(const std::vector<const char*> layers
                                   )-> vk::Instance
 {
 	auto appInfo = vk::ApplicationInfo("Example Filter", 0, "no_engine"
-	                                   , 0, VK_API_VERSION_1_0); // The only important field here is apiVersion
+	                                   , 0, VK_API_VERSION_1_2); // The only important field here is apiVersion
 	auto createInfo = vk::InstanceCreateInfo(vk::InstanceCreateFlags(), &appInfo
 	                                         , ARR_VIEW(layers), ARR_VIEW(extensions));
+	const vk::ValidationFeatureEnableEXT enables(vk::ValidationFeatureEnableEXT::eDebugPrintf);
+	const vk::ValidationFeaturesEXT features = {1, &enables, 0, nullptr};
+	createInfo.setPNext(&features);
 	return vk::createInstance(createInfo);
 }
 

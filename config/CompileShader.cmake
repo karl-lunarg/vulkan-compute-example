@@ -11,7 +11,7 @@ function(compile_shader)
    get_filename_component(TargetDir ${COMPILE_SHADER_TARGET} DIRECTORY)
    add_custom_command(
       COMMAND ${CMAKE_COMMAND} ARGS -E make_directory ${TargetDir}
-      COMMAND ${GlslangValidator} ARGS -V ${COMPILE_SHADER_SOURCE} -o ${COMPILE_SHADER_TARGET}
+      COMMAND ${GlslangValidator} ARGS --target-env vulkan1.2 -w -V ${COMPILE_SHADER_SOURCE} -o ${COMPILE_SHADER_TARGET}
       DEPENDS ${COMPILE_SHADER_SOURCE}
       OUTPUT ${COMPILE_SHADER_TARGET}
    )
