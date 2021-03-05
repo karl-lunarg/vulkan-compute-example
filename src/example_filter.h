@@ -6,6 +6,7 @@
 struct ExampleFilter
 {
     static constexpr auto NumDescriptors = uint32_t(2); ///< number of binding descriptors (array input-output parameters)
+    static constexpr auto NumQueries = uint32_t(2);     ///< number of queries allocated in query pool
 
     /// C++ mirror of the shader push constants interface
     struct PushParams
@@ -26,6 +27,7 @@ public:                                           // data
     vk::CommandPool cmdPool;                      ///< used to allocate command buffers
     vk::PipelineCache pipeCache;                  ///< pipeline cache
     vk::PipelineLayout pipeLayout;                ///< defines shader interface as a set of layout bindings and push constants
+    vk::QueryPool queryPool;                      ///< for timestamp queries
 
     vk::Pipeline pipe;                   ///< pipeline to submit compute commands
     mutable vk::CommandBuffer cmdBuffer; ///< commands recorded here, once command buffer is submitted to a queue those commands get executed
@@ -52,5 +54,8 @@ private: // helpers
 
     static auto createDescriptorSet(const vk::Device &device, const vk::DescriptorPool &pool, const vk::DescriptorSetLayout &layout, vk::Buffer &out, const vk::Buffer &in, uint32_t size) -> vk::DescriptorSet;
 
-    static auto createCommandBuffer(const vk::Device &device, const vk::CommandPool &cmdPool, const vk::Pipeline &pipeline, const vk::PipelineLayout &pipeLayout, const vk::DescriptorSet &dscSet, const PushParams &p) -> vk::CommandBuffer;
+    static auto createCommandBuffer(const vk::Device &device, const vk::CommandPool &cmdPool, const vk::Pipeline &pipeline, const vk::PipelineLayout &pipeLayout, const vk::DescriptorSet &dscSet, const PushParams &p, const vk::QueryPool &queryPool) -> vk::CommandBuffer;
+    
+    static auto createQueryPool(const vk::Device &device, vk::QueryType queryType, uint32_t queryCount, vk::QueryPipelineStatisticFlags pipelineStatisticFlags) -> vk::QueryPool;
+
 }; // struct MixpixFilter

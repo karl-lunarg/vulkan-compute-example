@@ -45,12 +45,14 @@ ExampleFilter::ExampleFilter(const std::string &shaderPath)
     pipeLayout = createPipelineLayout(device, dscLayout);
 
     pipe = createComputePipeline(device, shader, pipeLayout, pipeCache);
+    queryPool = createQueryPool(device, vk::QueryType::eTimestamp, NumQueries, vk::QueryPipelineStatisticFlagBits::eComputeShaderInvocations);
     cmdBuffer = vk::CommandBuffer{};
 }
 
 /// Destructor
 ExampleFilter::~ExampleFilter() noexcept
 {
+    device.destroyQueryPool(queryPool);
     device.destroyPipeline(pipe);
     device.destroyPipelineLayout(pipeLayout);
     device.destroyPipelineCache(pipeCache);
@@ -82,7 +84,7 @@ ExampleFilter::~ExampleFilter() noexcept
 auto ExampleFilter::bindParameters(vk::Buffer &out, const vk::Buffer &in, const ExampleFilter::PushParams &p) const -> void
 {
     auto dscSet = createDescriptorSet(device, dscPool, dscLayout, out, in, p.width * p.height);
-    cmdBuffer = createCommandBuffer(device, cmdPool, pipe, pipeLayout, dscSet, p);
+    cmdBuffer = createCommandBuffer(device, cmdPool, pipe, pipeLayout, dscSet, p, queryPool);
 }
 
 ///
@@ -107,8 +109,12 @@ auto ExampleFilter::run() const -> void
     device.waitForFences({fence}, true, uint64_t(-1)); // wait for the fence indefinitely
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> time_span = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
-    std::cout << "Dispatch time: " << time_span.count() * 1000.0 << " milliseconds." << std::endl;
+    std::cout << "Submit time: " << time_span.count() * 1000.0 << " milliseconds." << std::endl;
     device.destroyFence(fence);
+    std::vector<uint64_t> timestamps(NumQueries);
+    device.getQueryPoolResults(queryPool, 0, NumQueries, NumQueries * sizeof(uint64_t), timestamps.data(), sizeof(uint64_t), vk::QueryResultFlagBits::e64);
+    double shaderTime = (timestamps[1] - timestamps[0]) / 1e6;  // nanoseconds to milliseconds conversion
+    std::cout << "Shader time: " << shaderTime << " milliseconds." << std::endl;
 }
 /// run (sync) the filter
 auto ExampleFilter::operator()(vk::Buffer &out, const vk::Buffer &in, const ExampleFilter::PushParams &p) const -> void
@@ -188,7 +194,7 @@ auto ExampleFilter::createDescriptorSet(const vk::Device &device, const vk::Desc
 /// Create command buffer, push the push constants, bind descriptors and define the work batch size.
 /// All command buffers allocated from given command pool must be submitted to queues of corresponding
 /// family ONLY.
-auto ExampleFilter::createCommandBuffer(const vk::Device &device, const vk::CommandPool &cmdPool, const vk::Pipeline &pipeline, const vk::PipelineLayout &pipeLayout, const vk::DescriptorSet &dscSet, const ExampleFilter::PushParams &p) -> vk::CommandBuffer
+auto ExampleFilter::createCommandBuffer(const vk::Device &device, const vk::CommandPool &cmdPool, const vk::Pipeline &pipeline, const vk::PipelineLayout &pipeLayout, const vk::DescriptorSet &dscSet, const ExampleFilter::PushParams &p, const vk::QueryPool &queryPool) -> vk::CommandBuffer
 {
     // allocate a command buffer from the command pool.
     auto commandBufferAI = vk::CommandBufferAllocateInfo(cmdPool, vk::CommandBufferLevel::ePrimary, 1);
@@ -203,12 +209,26 @@ auto ExampleFilter::createCommandBuffer(const vk::Device &device, const vk::Comm
     // The validation layer will NOT give warnings if you forget those.
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, pipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, pipeLayout, 0, {dscSet}, {});
+    commandBuffer.resetQueryPool(queryPool, 0, NumQueries);
 
     commandBuffer.pushConstants(pipeLayout, vk::ShaderStageFlagBits::eCompute, 0, ST_VIEW(p));
 
     // Start the compute pipeline, and execute the compute shader.
     // The number of workgroups is specified in the arguments.
+    commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, queryPool, 0);
     commandBuffer.dispatch(div_up(p.width, WORKGROUP_SIZE), div_up(p.height, WORKGROUP_SIZE), 1);
+    commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, queryPool, 1);
     commandBuffer.end(); // end recording commands
     return commandBuffer;
+}
+
+auto ExampleFilter::createQueryPool(const vk::Device &device, vk::QueryType queryType, uint32_t queryCount, vk::QueryPipelineStatisticFlags pipelineStatisticFlags) -> vk::QueryPool
+{
+    vk::QueryPoolCreateInfo queryPoolCreateInfo(
+        {},
+        queryType,
+        queryCount,
+        pipelineStatisticFlags
+    );
+    return device.createQueryPool(queryPoolCreateInfo);
 }
