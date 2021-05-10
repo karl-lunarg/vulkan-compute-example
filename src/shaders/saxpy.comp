@@ -4,7 +4,7 @@
 
 layout(local_size_x = 32) in;
 layout(push_constant) uniform Parameters {
-   uint numElements;  // not used
+   uint numElements;
 	float a;
 } params;
 
@@ -12,10 +12,6 @@ layout(std430, binding = 0) buffer lay0 { float arr_y[]; };
 layout(std430, binding = 1) buffer lay1 { float arr_x[]; };
 
 void main(){
-   const uint id = gl_GlobalInvocationID.x;
-   if (id >= params.numElements) {
-      debugPrintfEXT("Got out of bounds invocation index %d", id);
-   } else {
-      arr_y[id] += params.a*arr_x[id];
-   }
+   for (uint i = 0; i < params.numElements; ++i)
+      arr_y[i] += params.a*arr_x[i];
 }
