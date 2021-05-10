@@ -1,6 +1,7 @@
 #version 460 core
-#extension GL_KHR_shader_subgroup_basic: enable
 #extension GL_KHR_shader_subgroup_vote: enable
+#extension GL_KHR_shader_subgroup_arithmetic: enable
+#extension GL_EXT_shader_atomic_float: enable
 #extension GL_EXT_debug_printf : enable
 #extension SPV_KHR_non_semantic_info : enable 
 
@@ -13,21 +14,44 @@ layout(push_constant) uniform Parameters {
 layout(std430, binding = 0) buffer lay0 { float arr_y[]; };
 layout(std430, binding = 1) buffer lay1 { float arr_x[]; };
 
+// This data is needed only when the subgroup size is different from the workgroup size.
+// When different its size should be workgroup size / subgroup size, rounded up.
+// This temp storage is used when more than one subgroup must run within a workgroup.
+shared float subgroupData[1];
 void main(){
-   const uint id = gl_GlobalInvocationID.x;
-   if (id >= params.numElements) {
-      debugPrintfEXT("Got out of bounds invocation index %d", id);
-   } else {
-      bool condition = arr_x[id] < 0.5f; 
-      if (subgroupAll(condition)) {
-         arr_y[id] += 10.0f * params.a * arr_x[id];
-      } else if (!subgroupAny(condition)) {
-         arr_y[id] += params.a * arr_x[id];
-      } else {
-         if (arr_x[id] < 0.5f)
-            arr_y[id] += 10.0f * params.a * arr_x[id];
-         else
-            arr_y[id] += params.a * arr_x[id];
-      }
+
+   // Load the invocation's array value into sum, if in bounds.
+   // Otherwise, leave it at zero so it does not affect the sum.
+   float sum = 0.0f;
+   if (gl_GlobalInvocationID.x < params.numElements) {
+      sum = arr_x[gl_GlobalInvocationID.x];
+   }
+
+   // Accumulate the sum for the entire subgroup
+   sum = subgroupAdd(sum);
+
+   // The following (up to "end multi-subgroup") is needed when more than one subgroup is needed to process
+   // everything in a workgroup.  It basically saves the subworkgroup's value for sum in the temp subgroupData
+   // array and then later uses another subgroup operation to add up these subgroup sums to get the final workgroup sum.
+   if (gl_SubgroupInvocationID == 0) {
+      subgroupData[gl_SubgroupID] = sum;
+   }
+   memoryBarrierShared();
+   barrier();
+   if (gl_SubgroupID == 0) {
+      sum = gl_SubgroupInvocationID < gl_NumSubgroups ? subgroupData[gl_SubgroupInvocationID] : 0;
+      sum = subgroupAdd(sum);
+   }
+   // end multi-subgroup
+
+   // Store each workgroup's final value for sum into the result array.
+   if (gl_LocalInvocationID.x == 0) {
+      arr_y[gl_WorkGroupID.x] = sum;
+   }
+
+   // Have each workgroup, except workgroup 0 add its sum to the final overall total.
+   barrier();
+   if (gl_LocalInvocationID.x == 0 && gl_WorkGroupID.x != 0) {
+      atomicAdd(arr_y[0], arr_y[gl_WorkGroupID.x]);
    }
 }
