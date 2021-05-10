@@ -4,7 +4,7 @@
 
 layout(local_size_x = 32) in;
 layout(push_constant) uniform Parameters {
-   uint numElements;  // not used
+   uint numElements;
 	float a;
 } params;
 
