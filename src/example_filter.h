@@ -11,9 +11,8 @@ struct ExampleFilter
     /// C++ mirror of the shader push constants interface
     struct PushParams
     {
-        uint32_t width;  ///< frame width
-        uint32_t height; ///< frame height
-        float a;         ///< saxpy (\$ y = y + ax \$) scaling factor
+        uint32_t numElements;                     ///< number of items in array
+        float a;                                  ///< scaling factor
     };
 
 public:                                           // data

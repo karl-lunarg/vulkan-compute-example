@@ -12,7 +12,7 @@
 using namespace vuh;
 namespace
 {
-    constexpr uint32_t WORKGROUP_SIZE = 16; ///< compute shader workgroup dimension is WORKGROUP_SIZE x WORKGROUP_SIZE
+    constexpr uint32_t WORKGROUP_SIZE = 32; ///< compute shader workgroup dimension is WORKGROUP_SIZE x WORKGROUP_SIZE
 
 #ifdef NDEBUG
     constexpr bool enableValidation = false;
@@ -83,7 +83,7 @@ ExampleFilter::~ExampleFilter() noexcept
 ///
 auto ExampleFilter::bindParameters(vk::Buffer &out, const vk::Buffer &in, const ExampleFilter::PushParams &p) const -> void
 {
-    auto dscSet = createDescriptorSet(device, dscPool, dscLayout, out, in, p.width * p.height);
+    auto dscSet = createDescriptorSet(device, dscPool, dscLayout, out, in, p.numElements);
     cmdBuffer = createCommandBuffer(device, cmdPool, pipe, pipeLayout, dscSet, p, queryPool);
 }
 
@@ -163,14 +163,8 @@ auto ExampleFilter::createPipelineLayout(const vk::Device &device, const vk::Des
 /// Specialization constants specialized here.
 auto ExampleFilter::createComputePipeline(const vk::Device &device, const vk::ShaderModule &shader, const vk::PipelineLayout &pipeLayout, const vk::PipelineCache &cache) -> vk::Pipeline
 {
-    // specialize constants of the shader
-    auto specEntries = std::array<vk::SpecializationMapEntry, 2>{
-        {{0, 0, sizeof(int)}, {1, 1 * sizeof(int), sizeof(int)}}};
-    auto specValues = std::array<int, 2>{WORKGROUP_SIZE, WORKGROUP_SIZE};
-    auto specInfo = vk::SpecializationInfo(ARR_VIEW(specEntries), specValues.size() * sizeof(int), specValues.data());
-
     // Specify the compute shader stage, and it's entry point (main), and specializations
-    auto stageCI = vk::PipelineShaderStageCreateInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, shader, "main", &specInfo);
+    auto stageCI = vk::PipelineShaderStageCreateInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, shader, "main", nullptr);
     auto pipelineCI = vk::ComputePipelineCreateInfo(vk::PipelineCreateFlags(), stageCI, pipeLayout);
     return device.createComputePipeline(cache, pipelineCI, nullptr).value;
 }
@@ -216,7 +210,7 @@ auto ExampleFilter::createCommandBuffer(const vk::Device &device, const vk::Comm
     // Start the compute pipeline, and execute the compute shader.
     // The number of workgroups is specified in the arguments.
     commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, queryPool, 0);
-    commandBuffer.dispatch(div_up(p.width, WORKGROUP_SIZE), div_up(p.height, WORKGROUP_SIZE), 1);
+    commandBuffer.dispatch(div_up(p.numElements, WORKGROUP_SIZE), 1, 1);
     commandBuffer.writeTimestamp(vk::PipelineStageFlagBits::eComputeShader, queryPool, 1);
     commandBuffer.end(); // end recording commands
     return commandBuffer;
