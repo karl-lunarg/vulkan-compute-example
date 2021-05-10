@@ -3,7 +3,7 @@
 
 auto main(int argc, char *argv[]) -> int
 {
-    const auto numElements = 6144;
+    const auto numElements = 6140;
     const auto a = 2.0f; // saxpy scaling factor
 
     auto y = std::vector<float>(numElements, 0.71f);

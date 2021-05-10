@@ -13,5 +13,9 @@ layout(std430, binding = 1) buffer lay1 { float arr_x[]; };
 
 void main(){
    const uint id = gl_GlobalInvocationID.x;
-   arr_y[id] += params.a*arr_x[id];
+   if (id >= params.numElements) {
+      debugPrintfEXT("Got out of bounds invocation index %d", id);
+   } else {
+      arr_y[id] += params.a*arr_x[id];
+   }
 }
