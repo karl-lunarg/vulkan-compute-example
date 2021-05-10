@@ -1,4 +1,6 @@
 #version 460 core
+#extension GL_KHR_shader_subgroup_basic: enable
+#extension GL_KHR_shader_subgroup_vote: enable
 #extension GL_EXT_debug_printf : enable
 #extension SPV_KHR_non_semantic_info : enable 
 
@@ -16,6 +18,16 @@ void main(){
    if (id >= params.numElements) {
       debugPrintfEXT("Got out of bounds invocation index %d", id);
    } else {
-      arr_y[id] += params.a*arr_x[id];
+      bool condition = arr_x[id] < 0.5f; 
+      if (subgroupAll(condition)) {
+         arr_y[id] += 10.0f * params.a * arr_x[id];
+      } else if (!subgroupAny(condition)) {
+         arr_y[id] += params.a * arr_x[id];
+      } else {
+         if (arr_x[id] < 0.5f)
+            arr_y[id] += 10.0f * params.a * arr_x[id];
+         else
+            arr_y[id] += params.a * arr_x[id];
+      }
    }
 }
