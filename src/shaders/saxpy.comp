@@ -14,44 +14,19 @@ layout(push_constant) uniform Parameters {
 layout(std430, binding = 0) buffer lay0 { float arr_y[]; };
 layout(std430, binding = 1) buffer lay1 { float arr_x[]; };
 
-// This data is needed only when the subgroup size is different from the workgroup size.
-// When different its size should be workgroup size / subgroup size, rounded up.
-// This temp storage is used when more than one subgroup must run within a workgroup.
-shared float subgroupData[1];
+shared float partialSum[32];
 void main(){
-
-   // Load the invocation's array value into sum, if in bounds.
-   // Otherwise, leave it at zero so it does not affect the sum.
-   float sum = 0.0f;
-   if (gl_GlobalInvocationID.x < params.numElements) {
-      sum = arr_x[gl_GlobalInvocationID.x];
-   }
-
-   // Accumulate the sum for the entire subgroup
-   sum = subgroupAdd(sum);
-
-   // The following (up to "end multi-subgroup") is needed when more than one subgroup is needed to process
-   // everything in a workgroup.  It basically saves the subworkgroup's value for sum in the temp subgroupData
-   // array and then later uses another subgroup operation to add up these subgroup sums to get the final workgroup sum.
-   if (gl_SubgroupInvocationID == 0) {
-      subgroupData[gl_SubgroupID] = sum;
-   }
-   memoryBarrierShared();
+   uint id = gl_LocalInvocationID.x;
+   uint gid = gl_GlobalInvocationID.x;
+   partialSum[id] = (gid < params.numElements) ? arr_x[gid] : 0.0f;
    barrier();
-   if (gl_SubgroupID == 0) {
-      sum = gl_SubgroupInvocationID < gl_NumSubgroups ? subgroupData[gl_SubgroupInvocationID] : 0;
-      sum = subgroupAdd(sum);
+   for (uint stride = gl_WorkGroupSize.x / 2; stride > 0; stride >>= 1) {
+      if (id < stride) {
+         partialSum[id] += partialSum[id + stride];
+      }
+      barrier();
    }
-   // end multi-subgroup
-
-   // Store each workgroup's final value for sum into the result array.
    if (gl_LocalInvocationID.x == 0) {
-      arr_y[gl_WorkGroupID.x] = sum;
-   }
-
-   // Have each workgroup, except workgroup 0 add its sum to the final overall total.
-   barrier();
-   if (gl_LocalInvocationID.x == 0 && gl_WorkGroupID.x != 0) {
-      atomicAdd(arr_y[0], arr_y[gl_WorkGroupID.x]);
+      atomicAdd(arr_y[0], partialSum[id]);
    }
 }
