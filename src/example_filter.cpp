@@ -12,7 +12,7 @@
 using namespace vuh;
 namespace
 {
-    constexpr uint32_t WORKGROUP_SIZE = 32; ///< compute shader workgroup dimension is WORKGROUP_SIZE x WORKGROUP_SIZE
+    constexpr uint32_t WORKGROUP_SIZE = 1024; ///< compute shader workgroup dimension is WORKGROUP_SIZE
 
 #ifdef NDEBUG
     constexpr bool enableValidation = false;
@@ -81,9 +81,9 @@ ExampleFilter::~ExampleFilter() noexcept
 }
 
 ///
-auto ExampleFilter::bindParameters(vk::Buffer &out, const vk::Buffer &in, const ExampleFilter::PushParams &p) const -> void
+auto ExampleFilter::bindParameters(vk::Buffer &out, const vk::Buffer &in, vk::Buffer &work, const ExampleFilter::PushParams &p) const -> void
 {
-    auto dscSet = createDescriptorSet(device, dscPool, dscLayout, out, in, p.numElements);
+    auto dscSet = createDescriptorSet(device, dscPool, dscLayout, out, in, work, p.numElements);
     cmdBuffer = createCommandBuffer(device, cmdPool, pipe, pipeLayout, dscSet, p, queryPool);
 }
 
@@ -117,9 +117,9 @@ auto ExampleFilter::run() const -> void
     std::cout << "Shader time: " << shaderTime << " milliseconds." << std::endl;
 }
 /// run (sync) the filter
-auto ExampleFilter::operator()(vk::Buffer &out, const vk::Buffer &in, const ExampleFilter::PushParams &p) const -> void
+auto ExampleFilter::operator()(vk::Buffer &out, const vk::Buffer &in, vk::Buffer &work, const ExampleFilter::PushParams &p) const -> void
 {
-    bindParameters(out, in, p);
+    bindParameters(out, in, work, p);
     run();
     unbindParameters();
 }
@@ -138,7 +138,10 @@ auto ExampleFilter::createInstance(const std::vector<const char *> layers, const
 /// Specify a descriptor set layout (number and types of descriptors).
 auto ExampleFilter::createDescriptorSetLayout(const vk::Device &device) -> vk::DescriptorSetLayout
 {
-    auto bindLayout = std::array<vk::DescriptorSetLayoutBinding, NumDescriptors>{{{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute}, {1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute}}};
+    auto bindLayout = std::array<vk::DescriptorSetLayoutBinding, NumDescriptors>{{{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute},
+                                                                                  {1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute},
+                                                                                  {2, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute},
+                                                                                  }};
     auto layoutCI = vk::DescriptorSetLayoutCreateInfo(vk::DescriptorSetLayoutCreateFlags(), ARR_VIEW(bindLayout));
     return device.createDescriptorSetLayout(layoutCI);
 }
@@ -171,15 +174,19 @@ auto ExampleFilter::createComputePipeline(const vk::Device &device, const vk::Sh
 
 /// Create descriptor set. Actually associate buffers to binding points in bindLayout.
 /// Buffer sizes are specified here as well.
-auto ExampleFilter::createDescriptorSet(const vk::Device &device, const vk::DescriptorPool &pool, const vk::DescriptorSetLayout &layout, vk::Buffer &out, const vk::Buffer &in, uint32_t size) -> vk::DescriptorSet
+auto ExampleFilter::createDescriptorSet(const vk::Device &device, const vk::DescriptorPool &pool, const vk::DescriptorSetLayout &layout, vk::Buffer &out, const vk::Buffer &in, vk::Buffer &work, uint32_t size) -> vk::DescriptorSet
 {
     auto descriptorSetAI = vk::DescriptorSetAllocateInfo(pool, 1, &layout);
     auto descriptorSet = device.allocateDescriptorSets(descriptorSetAI)[0];
 
     auto outInfo = vk::DescriptorBufferInfo(out, 0, sizeof(float) * size);
     auto inInfo = vk::DescriptorBufferInfo(in, 0, sizeof(float) * size);
+    auto workInfo = vk::DescriptorBufferInfo(work, 0, sizeof(float) * size);
 
-    auto writeDsSets = std::array<vk::WriteDescriptorSet, NumDescriptors>{{{descriptorSet, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &outInfo}, {descriptorSet, 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &inInfo}}};
+    auto writeDsSets = std::array<vk::WriteDescriptorSet, NumDescriptors>{{{descriptorSet, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &outInfo},
+                                                                           {descriptorSet, 1, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &inInfo},
+                                                                           {descriptorSet, 2, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &workInfo},
+                                                                           }};
 
     device.updateDescriptorSets(writeDsSets, {});
     return descriptorSet;

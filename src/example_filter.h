@@ -5,7 +5,7 @@
 /// doc me
 struct ExampleFilter
 {
-    static constexpr auto NumDescriptors = uint32_t(2); ///< number of binding descriptors (array input-output parameters)
+    static constexpr auto NumDescriptors = uint32_t(3); ///< number of binding descriptors (array input-output parameters)
     static constexpr auto NumQueries = uint32_t(2);     ///< number of queries allocated in query pool
 
     /// C++ mirror of the shader push constants interface
@@ -36,10 +36,10 @@ public:
     explicit ExampleFilter(const std::string &shaderPath);
     ~ExampleFilter() noexcept;
 
-    auto bindParameters(vk::Buffer &out, const vk::Buffer &in, const PushParams &p) const -> void;
+    auto bindParameters(vk::Buffer &out, const vk::Buffer &in, vk::Buffer &work, const PushParams &p) const -> void;
     auto unbindParameters() const -> void;
     auto run() const -> void;
-    auto operator()(vk::Buffer &out, const vk::Buffer &in, const PushParams &p) const -> void;
+    auto operator()(vk::Buffer &out, const vk::Buffer &in, vk::Buffer &work, const PushParams &p) const -> void;
 
 private: // helpers
     static auto createInstance(const std::vector<const char *> layers, const std::vector<const char *> extensions) -> vk::Instance;
@@ -51,7 +51,7 @@ private: // helpers
 
     static auto createComputePipeline(const vk::Device &device, const vk::ShaderModule &shader, const vk::PipelineLayout &pipeLayout, const vk::PipelineCache &cache) -> vk::Pipeline;
 
-    static auto createDescriptorSet(const vk::Device &device, const vk::DescriptorPool &pool, const vk::DescriptorSetLayout &layout, vk::Buffer &out, const vk::Buffer &in, uint32_t size) -> vk::DescriptorSet;
+    static auto createDescriptorSet(const vk::Device &device, const vk::DescriptorPool &pool, const vk::DescriptorSetLayout &layout, vk::Buffer &out, const vk::Buffer &in, vk::Buffer &work, uint32_t size) -> vk::DescriptorSet;
 
     static auto createCommandBuffer(const vk::Device &device, const vk::CommandPool &cmdPool, const vk::Pipeline &pipeline, const vk::PipelineLayout &pipeLayout, const vk::DescriptorSet &dscSet, const PushParams &p, const vk::QueryPool &queryPool) -> vk::CommandBuffer;
     

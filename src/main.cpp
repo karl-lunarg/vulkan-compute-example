@@ -6,26 +6,21 @@ auto main(int argc, char *argv[]) -> int
     const auto numElements = 1000;
     const auto a = 2.0f; // saxpy scaling factor
 
-    auto y = std::vector<float>(numElements, 0.00f);
-    auto x = std::vector<float>(numElements, 0.00f);
-    for (int i = 0; i < numElements; ++i) x[i] = float(i);
+    auto y = std::vector<uint32_t>(numElements, 0);
+    auto x = std::vector<uint32_t>(numElements, 0);
+    for (int i = 0; i < numElements; ++i) x[i] = i;
+    auto w = std::vector<uint32_t>(numElements * 4, 0);
 
     ExampleFilter f("shaders/saxpy.spv");
-    auto d_y = vuh::Array<float>::fromHost(y, f.device, f.physDevice);
-    auto d_x = vuh::Array<float>::fromHost(x, f.device, f.physDevice);
+    auto d_y = vuh::Array<uint32_t>::fromHost(y, f.device, f.physDevice);
+    auto d_x = vuh::Array<uint32_t>::fromHost(x, f.device, f.physDevice);
+    auto d_w = vuh::Array<uint32_t>::fromHost(w, f.device, f.physDevice);  // work buffer
 
-    f(d_y, d_x, {numElements, a});
+    f(d_y, d_x, d_w, {numElements, a});
 
-    auto out_tst = std::vector<float>{};
-    d_y.to_host(out_tst); // and now out_tst should contain the result of saxpy (y = y + ax)
+    auto out_tst = std::vector<uint32_t>{};
+    d_y.to_host(out_tst); // and now out_tst should contain the result
 
-    std::cout << "Starting result check..." << std::endl;
-    float expectedResult = (float)numElements * ((float)numElements - 1) / 2;
-    if (out_tst[0] != expectedResult)
-    {
-        std::cout << "Result incorrect, expected " << expectedResult << " got " << out_tst[0] << std::endl;
-        return 1;
-    }
-    std::cout << "Result OK" << std::endl;
+    // Set breakpoint here and examime out_tst.
     return 0;
 }
